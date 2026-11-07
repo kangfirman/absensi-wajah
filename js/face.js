@@ -28,7 +28,16 @@ const Wajah = {
   },
   async deteksi(video) {
     const r = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 })).withFaceLandmarks().withFaceDescriptor();
-    return r ? { desc: Array.from(r.descriptor), skor: r.detection.score } : null;
+    if (!r) return null;
+    const p = r.landmarks.positions, w = p[16].x - p[0].x;
+    let ey = 0; for (let i = 36; i < 48; i++) ey += p[i].y; ey /= 12;
+    const dagu = p[8].y - ey;
+    return {
+      desc: Array.from(r.descriptor), skor: r.detection.score,
+      yaw: w > 0 ? (p[30].x - p[0].x) / w : 0.5,          // ~0.5 = menghadap lurus
+      pitch: dagu > 0 ? (p[30].y - ey) / dagu : 0.5,      // dipakai relatif terhadap foto pertama
+      lebar: video.videoWidth ? r.detection.box.width / video.videoWidth : 1
+    };
   },
   jarak(a, b) { let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return Math.sqrt(s); },
   // Cocokkan dengan jarak TERDEKAT tiap siswa; tolak bila ambigu (dua siswa sama-sama dekat)
