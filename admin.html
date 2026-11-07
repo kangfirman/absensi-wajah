@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portal Guru — Absensi Wajah Siswa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css"></head>
+<body>
+<div id="login" class="center hide"><div class="box card" style="padding:32px">
+ <div class="logo" style="justify-content:center"><span class="mark ms">face</span></div>
+ <h2 style="text-align:center">Masuk Portal Guru</h2>
+ <div id="lmsg" class="muted" style="text-align:center;margin:8px 0 18px">Hanya akun guru yang terdaftar yang dapat mengakses panel ini.</div>
+ <div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>
+ <div id="ditolak" class="hide" style="text-align:center"><div class="ms" style="font-size:44px;color:var(--err)">lock</div><h3>Akses Tidak Diizinkan</h3><p id="dtxt" class="muted"></p><button class="btn out" id="ganti">Ganti Akun</button></div>
+ <form id="darurat" class="hide" style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px" autocomplete="off">
+  <h3>Akses Darurat</h3><div class="f"><label>Nama pengguna</label><input id="du" autocomplete="off"></div>
+  <div class="f"><label>Kata sandi</label><input id="dp" type="password" autocomplete="off"></div><button class="btn full" type="submit">Masuk Darurat</button>
+ </form>
+ <p style="text-align:center;margin-top:18px"><a href="daftar.html" style="color:var(--p);font-size:13px">Siswa? Daftarkan wajah di sini</a></p>
+</div></div>
+
+<div id="app" class="shell hide">
+ <aside class="side">
+  <div class="logo"><span class="mark ms">face</span><div>Absensi Wajah<div class="muted" style="font-size:11px;font-weight:500">Portal Guru</div></div></div>
+  <nav class="nav">
+   <a href="#dashboard" data-h="dashboard"><span class="ms">dashboard</span><span>Dashboard</span></a>
+   <a href="#absen" data-h="absen"><span class="ms">face</span><span>Absen Wajah</span><span class="pill ok bdg">Live</span></a>
+   <a href="#siswa" data-h="siswa"><span class="ms">groups</span><span>Data Siswa</span><span class="pill warn bdg hide" id="bdgS"></span></a>
+   <a href="#rekap" data-h="rekap"><span class="ms">bar_chart</span><span>Rekap</span></a>
+   <a href="#pengaturan" data-h="pengaturan"><span class="ms">settings</span><span>Pengaturan</span></a>
+  </nav>
+  <div style="flex:1"></div>
+  <a class="nav keluar" href="#" id="keluar" style="display:flex;gap:10px;padding:10px 12px;color:var(--err);text-decoration:none;font-weight:600"><span class="ms">logout</span>Keluar</a>
+ </aside>
+ <div class="main">
+  <header class="top"><b id="judul">Dashboard</b><span class="chip" id="tglTop"></span><div style="flex:1"></div><span class="muted" id="user"></span><button class="btn out sm" id="keluar2"><span class="ms">logout</span></button></header>
+  <main id="konten"></main>
+ </div>
+</div>
+<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/face.js"></script><script src="js/admin.js"></script>
+</body></html>

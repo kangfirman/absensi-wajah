@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pendaftaran Wajah — Absensi Wajah Siswa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css"></head>
+<body>
+<div class="hdr"><small>ABSENSI WAJAH SISWA</small><h2 style="margin-top:4px">Pendaftaran Biometrik</h2></div>
+<div class="pub" id="app">
+ <div class="steps"><div id="s1" class="on">1. Identitas</div><div id="s2">2. Persetujuan</div><div id="s3">3. Wajah</div></div>
+
+ <section id="p1" class="card">
+  <h3>Langkah 1: Verifikasi Identitas</h3><p class="muted">Masukkan NIS dan token kelas dari wali kelas Anda.</p>
+  <div class="f"><label for="nis">NIS (Nomor Induk Siswa)</label><input id="nis" inputmode="numeric" autocomplete="off" placeholder="mis. 2024001"></div>
+  <div class="f"><label for="tok">Token Kelas</label><input id="tok" autocomplete="off" placeholder="KLS-XXXXXX" style="text-transform:uppercase"></div>
+  <div id="e1" class="err-t"></div>
+  <div id="hasil" class="mint hide"></div>
+  <button class="btn full" id="b1">Cek Data</button>
+  <button class="btn full hide" id="b1n"><span>Lanjut ke Persetujuan</span><span class="ms">arrow_forward</span></button>
+ </section>
+
+ <section id="p2" class="card hide">
+  <h3>Langkah 2: Persetujuan (Informed Consent)</h3>
+  <div class="consent">
+   <p><b>Penggunaan data wajah untuk absensi.</b></p>
+   <p>• Sistem menyimpan <b>data numerik pemetaan wajah</b> (bukan foto) untuk mencocokkan Anda saat absen.<br>• Data hanya dapat diakses guru/admin sekolah dan dipakai <b>hanya</b> untuk absensi.<br>• Anda atau orang tua/wali dapat meminta penghapusan data kapan saja lewat wali kelas.<br>• Jika keberatan, Anda tetap dapat diabsen secara manual oleh guru.</p>
+  </div>
+  <label class="chk" style="margin:14px 0"><input type="checkbox" id="setuju"><span>Saya (dan orang tua/wali) menyetujui penggunaan data wajah untuk absensi sekolah.</span></label>
+  <div class="row"><button class="btn out" id="b2b">Kembali</button><button class="btn grow" id="b2n" disabled>Lanjut ke Pemindaian</button></div>
+ </section>
+
+ <section id="p3" class="card hide">
+  <h3>Langkah 3: Pindai Wajah</h3>
+  <p class="muted" id="info3">Menyiapkan…</p>
+  <div class="vp" id="vp" style="max-height:380px"><video id="cam" playsinline muted></video><div class="oval"></div><div class="vp-chip" id="instr">Menyiapkan kamera…</div></div>
+  <div class="dots" id="dots"></div>
+  <button class="btn full" id="b3" disabled><span class="ms">photo_camera</span> Ambil</button>
+  <div id="e3" class="err-t"></div>
+ </section>
+
+ <section id="p4" class="card hide" style="text-align:center">
+  <div class="ms" style="font-size:64px;color:var(--p)">check_circle</div><h2>Pendaftaran Selesai</h2>
+  <p id="sukses" class="muted"></p><p>Anda sekarang dapat absen dengan wajah di laptop guru.</p>
+ </section>
+ <p class="muted" style="text-align:center;font-size:12px;margin-top:20px">Bantuan: hubungi wali kelas / unit IT sekolah.</p>
+</div>
+<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/face.js"></script><script src="js/daftar.js"></script>
+</body></html>
