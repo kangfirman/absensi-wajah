@@ -160,7 +160,7 @@ async function gambarDash(d) {
 // ============ ABSEN WAJAH ============
 const A = { jalan: false, jeda: false, siswa: [], sudah: {}, log: [], terakhir: null, ambang: 0.5, last: { nis: null, n: 0 }, cool: {}, kirim: false, clk: null, rst: null, trk: { target: null, cur: null }, lbl: { t: 'Mencari wajah…', s: 'cari', sub: '' } };
 function hentiAbsen() {
-  A.jalan = false; clearInterval(A.clk); clearTimeout(A.rst);
+  A.jalan = false; clearInterval(A.clk); clearTimeout(A.rst); clearTimeout(A.bt);
   const v = $('#cam'); if (v) Wajah.henti(v);
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }
@@ -175,7 +175,7 @@ function rAbsen(my) {
   <div class="card row between" style="margin-bottom:20px"><div class="row"><select id="ak" style="width:auto">${opsiKelas('Semua Kelas')}</select><span class="chip mono" id="jam">--:--:--</span><span class="chip" id="sesi">Sesi belum dimulai</span></div>
    <div class="row"><button class="btn out" id="jeda" disabled><span class="ms">pause</span> Jeda Sesi</button><button class="btn ind" id="fs"><span class="ms">fullscreen</span> Layar Penuh</button></div></div>
   <div class="grid g-main"><div>
-   <div class="vp" id="vp"><video id="cam" playsinline muted></video><canvas class="trk" id="trk"></canvas><div class="vp-chip" id="vst">Belum dimulai</div><button class="btn warn vp-btn hide" id="man"><span class="ms">edit_note</span> Input Absen Manual</button>
+   <div class="vp" id="vp"><video id="cam" playsinline muted></video><canvas class="trk" id="trk"></canvas><div class="vp-chip" id="vst">Belum dimulai</div><div class="ban" id="ban"><div class="ic"><span class="ms">check</span></div><div><small>PRESENSI BERHASIL</small><div><b id="bn"></b></div><div class="mono" id="bs"></div></div><div class="tm" id="bt"></div></div><button class="btn warn vp-btn hide" id="man"><span class="ms">edit_note</span> Input Absen Manual</button>
     <div class="vp-cover" id="cover"><div><div class="ms" style="font-size:52px">face</div><h3 style="color:#fff;margin:8px 0">Mulai Sesi Absen</h3><p>Pilih kelas lalu mulai. Browser akan meminta izin kamera.</p><button class="btn" id="mulai">Mulai Sesi</button><p class="mono" id="minfo" style="margin-top:10px"></p></div></div></div>
    <div class="card" style="margin-top:16px"><b>Panduan Operator Kelas</b><p class="muted" style="margin:6px 0 0">Pastikan cahaya merata dan siswa berdiri 60–80 cm dari kamera. Siswa maju satu per satu. Jika wajah tidak dikenali setelah beberapa detik, gunakan <b>Input Absen Manual</b>.</p></div>
   </div><div>
@@ -264,23 +264,15 @@ function gambarTrk(cv) {
   if (!T.target || Date.now() - T.target.t > 800 || !vid.videoWidth) { T.cur = null; return; }
   const b = T.target.box;                                   // geser halus ke posisi terbaru (tracking mulus)
   T.cur = T.cur ? { x: T.cur.x + (b.x - T.cur.x) * .4, y: T.cur.y + (b.y - T.cur.y) * .4, w: T.cur.w + (b.w - T.cur.w) * .4, h: T.cur.h + (b.h - T.cur.h) * .4 } : { x: b.x, y: b.y, w: b.w, h: b.h };
-  const d = petakan(T.cur, vid.videoWidth, vid.videoHeight, r.width, r.height), pad = Math.max(8, d.w * .12);
+  const d = petakan(T.cur, vid.videoWidth, vid.videoHeight, r.width, r.height), pad = Math.max(4, d.w * .06);
   const x = d.x - pad, y = d.y - pad, w = d.w + pad * 2, h = d.h + pad * 2, L = A.lbl;
-  const col = { cari: '#2DD4BF', kenal: '#F59E0B', sukses: '#10B981', gagal: '#EF4444' }[L.s] || '#2DD4BF';
-  g.lineJoin = 'round'; g.lineCap = 'round';
-  g.strokeStyle = col; g.globalAlpha = .5; g.lineWidth = 1.5; rr(g, x, y, w, h, 10); g.stroke(); g.globalAlpha = 1;
-  const c = Math.min(w, h) * .22; g.lineWidth = 4; g.shadowColor = col; g.shadowBlur = 8;
-  [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(k => { g.beginPath(); g.moveTo(k[0], k[1] + k[3] * c); g.lineTo(k[0], k[1]); g.lineTo(k[0] + k[2] * c, k[1]); g.stroke(); });
-  g.shadowBlur = 0;
-  // label nama di atas kotak
-  g.font = '700 15px Inter, system-ui, sans-serif'; const w1 = g.measureText(L.t).width;
-  g.font = '600 12px Inter, system-ui, sans-serif'; const w2 = L.sub ? g.measureText(L.sub).width : 0;
-  const lw = Math.max(w1, w2) + 22, lh = L.sub ? 44 : 28;
-  const lx = Math.max(4, Math.min(r.width - lw - 4, x + w / 2 - lw / 2)); let ly = y - lh - 8; if (ly < 4) ly = y + 8;
-  g.fillStyle = col; rr(g, lx, ly, lw, lh, 8); g.fill();
-  g.fillStyle = L.s === 'kenal' ? '#1c1917' : '#fff'; g.textBaseline = 'middle'; g.textAlign = 'center';
-  g.font = '700 15px Inter, system-ui, sans-serif'; g.fillText(L.t, lx + lw / 2, ly + (L.sub ? 14 : lh / 2));
-  if (L.sub) { g.font = '600 12px Inter, system-ui, sans-serif'; g.fillText(L.sub, lx + lw / 2, ly + 31); }
+  const col = { cari: '#16A34A', kenal: '#F59E0B', sukses: '#16A34A', gagal: '#EF4444' }[L.s] || '#16A34A';
+  g.strokeStyle = col; g.lineWidth = 2.5; g.strokeRect(x, y, w, h);
+  // label nama menempel di tepi atas kotak
+  g.font = '700 14px Inter, system-ui, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
+  const lh = 24, lw = Math.max(w, g.measureText(L.t).width + 16), lx = Math.max(0, Math.min(x, r.width - lw)); let ly = y - lh; if (ly < 0) ly = y;
+  g.fillStyle = col; g.fillRect(lx, ly, lw, lh);
+  g.fillStyle = L.s === 'kenal' ? '#1c1917' : '#fff'; g.fillText(L.t, lx + 8, ly + lh / 2 + 1);
 }
 
 async function catat(s, extra) {
@@ -289,7 +281,14 @@ async function catat(s, extra) {
   const a = r.data.absen; A.sudah[a.nis] = a;
   if (r.data.duplikat) { A.lbl = { t: s.nama, s: 'sukses', sub: `✔ ${a.status} • ${a.jam}` }; setSt(`${s.nama} sudah absen pukul ${a.jam}`, 'info'); updProg(); return true; }
   A.log.unshift(a); A.terakhir = { a, akurasi: extra.akurasi };
-  A.lbl = { t: s.nama, s: 'sukses', sub: `✔ ${a.status} • ${a.jam}` }; setSt(`✔ ${s.nama} — ${a.status}`, 'sukses'); updProg(); renderKanan(); return true;
+  A.lbl = { t: s.nama, s: 'sukses', sub: `✔ ${a.status} • ${a.jam}` }; setSt(`✔ ${s.nama} — ${a.status}`, 'sukses'); banner(a); updProg(); renderKanan(); return true;
+}
+function banner(a) {
+  const b = $('#ban'); if (!b) return;
+  b.className = 'ban ' + ({ Hadir: 'ok', Terlambat: 'warn' }[a.status] || 'info');
+  $('#bn').textContent = a.nama; $('#bs').textContent = `NIS: ${a.nis} - Kelas: ${a.kelas} - ${a.status}`; $('#bt').textContent = a.jam + ' WIB';
+  void b.offsetWidth; b.classList.add('show');
+  clearTimeout(A.bt); A.bt = setTimeout(() => b.classList.remove('show'), 3500);
 }
 function updProg() {
   const tot = A.siswa.length, sudah = A.siswa.filter(s => A.sudah[s.nis]).length, p = pct(sudah, tot);
