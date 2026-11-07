@@ -60,9 +60,9 @@ async function mulai() {
 async function tampilLogin() {
   $('#app').classList.add('hide'); $('#login').classList.remove('hide');
   $('#darurat').classList.toggle('hide', location.hash !== '#darurat');
-  if (!configOk()) { $('#lmsg').textContent = 'Konfigurasi belum lengkap: isi GAS_URL di js/config.js.'; return; }
+  if (!configOk()) { $('#lmsg').textContent = pesanConfig(); return; }
   const c = await api('auth.config');
-  if (!c.success) { $('#lmsg').textContent = c.message; return; }
+  if (!c.success) { $('#lmsg').innerHTML = esc(c.message) + `<br><a href="${esc(window.APP_CONFIG.GAS_URL.trim())}?action=ping" target="_blank" rel="noopener" style="color:var(--p)">Tes URL backend ↗</a>`; return; }
   if (!c.data.googleClientId) { $('#gbtn').innerHTML = '<p class="muted" style="text-align:center;font-size:13px">Login Google belum dikonfigurasi. Buka <b>admin.html#darurat</b> untuk masuk dengan akses darurat lalu isi Client ID di Pengaturan.</p>'; return; }
   try {
     await muatSkrip(CDN.gsi);
@@ -158,7 +158,7 @@ async function gambarDash(d) {
 }
 
 // ============ ABSEN WAJAH ============
-const A = { jalan: false, jeda: false, siswa: [], sudah: {}, log: [], terakhir: null, ambang: 0.5, last: { nis: null, n: 0 }, cool: {}, kirim: false, clk: null, rst: null };
+const A = { jalan: false, jeda: false, siswa: [], sudah: {}, log: [], terakhir: null, ambang: 0.5, last: { nis: null, n: 0 }, cool: {}, kirim: false, clk: null, rst: null, trk: { target: null, cur: null }, lbl: { t: 'Mencari wajah…', s: 'cari', sub: '' } };
 function hentiAbsen() {
   A.jalan = false; clearInterval(A.clk); clearTimeout(A.rst);
   const v = $('#cam'); if (v) Wajah.henti(v);
@@ -175,7 +175,7 @@ function rAbsen(my) {
   <div class="card row between" style="margin-bottom:20px"><div class="row"><select id="ak" style="width:auto">${opsiKelas('Semua Kelas')}</select><span class="chip mono" id="jam">--:--:--</span><span class="chip" id="sesi">Sesi belum dimulai</span></div>
    <div class="row"><button class="btn out" id="jeda" disabled><span class="ms">pause</span> Jeda Sesi</button><button class="btn ind" id="fs"><span class="ms">fullscreen</span> Layar Penuh</button></div></div>
   <div class="grid g-main"><div>
-   <div class="vp" id="vp"><video id="cam" playsinline muted></video><div class="oval hide" id="ov"></div><div class="vp-chip" id="vst">Belum dimulai</div><button class="btn warn vp-btn hide" id="man"><span class="ms">edit_note</span> Input Absen Manual</button>
+   <div class="vp" id="vp"><video id="cam" playsinline muted></video><canvas class="trk" id="trk"></canvas><div class="vp-chip" id="vst">Belum dimulai</div><button class="btn warn vp-btn hide" id="man"><span class="ms">edit_note</span> Input Absen Manual</button>
     <div class="vp-cover" id="cover"><div><div class="ms" style="font-size:52px">face</div><h3 style="color:#fff;margin:8px 0">Mulai Sesi Absen</h3><p>Pilih kelas lalu mulai. Browser akan meminta izin kamera.</p><button class="btn" id="mulai">Mulai Sesi</button><p class="mono" id="minfo" style="margin-top:10px"></p></div></div></div>
    <div class="card" style="margin-top:16px"><b>Panduan Operator Kelas</b><p class="muted" style="margin:6px 0 0">Pastikan cahaya merata dan siswa berdiri 60–80 cm dari kamera. Siswa maju satu per satu. Jika wajah tidak dikenali setelah beberapa detik, gunakan <b>Input Absen Manual</b>.</p></div>
   </div><div>
@@ -203,41 +203,93 @@ async function mulaiAbsen() {
     await Wajah.kamera($('#cam'));
     const m = r.data.jamMasuk.split(':'), tt = Number(m[0]) * 60 + Number(m[1]) + r.data.toleransi;
     $('#sesi').textContent = `Sesi Aktif | Masuk ${r.data.jamMasuk}, toleransi ${String(Math.floor(tt / 60) % 24).padStart(2, '0')}:${String(tt % 60).padStart(2, '0')}`;
-    $('#cover').classList.add('hide'); $('#ov').classList.remove('hide'); $('#man').classList.remove('hide'); $('#jeda').disabled = false;
-    A.jalan = true; A.jeda = false; setSt('Menunggu siswa di depan kamera…', ''); updProg(); renderKanan(); loopAbsen();
+    $('#cover').classList.add('hide'); $('#man').classList.remove('hide'); $('#jeda').disabled = false;
+    A.jalan = true; A.jeda = false; A.trk = { target: null, cur: null }; A.lbl = LBL_CARI; setSt('Menunggu siswa di depan kamera…', ''); updProg(); renderKanan(); trkLoop(); loopAbsen();
     if (!A.siswa.some(s => s.desc)) toast('Belum ada siswa yang terdaftar wajahnya di pilihan ini. Gunakan absen manual.', 'warn');
   } catch (e) {
     b.disabled = false;
     $('#minfo').textContent = e.name === 'NotAllowedError' ? 'Izin kamera ditolak. Aktifkan izin kamera di browser.' : (e.message || 'Gagal memulai sesi.');
   }
 }
+const LBL_CARI = { t: 'Mencari wajah…', s: 'cari', sub: '' };
 async function loopAbsen() {
   if (!A.jalan) return;
-  if (!A.jeda && !A.kirim && document.visibilityState === 'visible') {
-    try {
-      const r = await Wajah.deteksi($('#cam'));
-      if (!A.jalan) return;
-      if (r) prosesWajah(r); else { A.last = { nis: null, n: 0 }; if (!A.rst) setSt('Menunggu siswa di depan kamera…', ''); }
-    } catch (e) { console.error(e.message); }
+  if (document.visibilityState === 'visible') {
+    if (A.jeda) A.trk.target = null;
+    else {
+      try {
+        const r = await Wajah.deteksi($('#cam'));
+        if (!A.jalan) return;
+        if (r) { A.trk.target = { box: r.box, t: Date.now() }; prosesWajah(r); }
+        else { A.last = { nis: null, n: 0 }; if (!A.kirim) A.lbl = LBL_CARI; if (!A.rst) setSt('Menunggu siswa di depan kamera…', ''); }
+      } catch (e) { console.error(e.message); }
+    }
   }
-  setTimeout(loopAbsen, 250);
+  setTimeout(loopAbsen, 100);
 }
 function prosesWajah(r) {
+  if (A.kirim) return;
   const m = Wajah.cocok(r.desc, A.siswa.filter(s => s.desc), A.ambang);
-  if (!m) { A.last = { nis: null, n: 0 }; setSt('Wajah tidak dikenali — coba lagi atau gunakan absen manual', 'gagal'); return; }
+  if (!m) { A.last = { nis: null, n: 0 }; A.lbl = { t: 'Tidak dikenal', s: 'gagal', sub: 'Coba lagi atau absen manual' }; setSt('Wajah tidak dikenali — coba lagi atau gunakan absen manual', 'gagal'); return; }
   const s = m.siswa;
-  if (A.sudah[s.nis]) { if (!A.cool[s.nis] || Date.now() - A.cool[s.nis] > 5000) { A.cool[s.nis] = Date.now(); setSt(`${s.nama} sudah absen pukul ${A.sudah[s.nis].jam}`, 'info'); } return; }
+  if (A.sudah[s.nis]) {
+    const x = A.sudah[s.nis]; A.lbl = { t: s.nama, s: 'sukses', sub: `✔ ${x.status} • ${x.jam}` };
+    if (!A.cool[s.nis] || Date.now() - A.cool[s.nis] > 5000) { A.cool[s.nis] = Date.now(); setSt(`${s.nama} sudah absen pukul ${x.jam}`, 'info'); }
+    return;
+  }
   A.last = A.last.nis === s.nis ? { nis: s.nis, n: A.last.n + 1 } : { nis: s.nis, n: 1 };
+  A.lbl = { t: s.nama, s: 'kenal', sub: 'Memverifikasi…' };
   setSt(`Memverifikasi ${s.nama}…`, 'kenal');
   if (A.last.n >= 2) { A.kirim = true; catat(s, { metode: 'Wajah', akurasi: m.akurasi }).finally(() => { A.kirim = false; A.last = { nis: null, n: 0 }; }); }
 }
+
+// ---- Pelacak kotak wajah (kanvas di atas video) ----
+// Koordinat video -> tampilan: object-fit: cover + video dicerminkan (scaleX(-1)); kanvas tidak dicerminkan agar teks terbaca
+function petakan(b, vw, vh, cw, ch) {
+  const s = Math.max(cw / vw, ch / vh), ox = (cw - vw * s) / 2, oy = (ch - vh * s) / 2;
+  return { x: cw - (b.x * s + ox + b.w * s), y: b.y * s + oy, w: b.w * s, h: b.h * s };
+}
+function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function trkLoop() {
+  const cv = $('#trk'); if (!cv) return;
+  if (!A.jalan) { cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); return; }
+  gambarTrk(cv); requestAnimationFrame(trkLoop);
+}
+function gambarTrk(cv) {
+  const vid = $('#cam'), r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  const T = A.trk;
+  if (!T.target || Date.now() - T.target.t > 800 || !vid.videoWidth) { T.cur = null; return; }
+  const b = T.target.box;                                   // geser halus ke posisi terbaru (tracking mulus)
+  T.cur = T.cur ? { x: T.cur.x + (b.x - T.cur.x) * .4, y: T.cur.y + (b.y - T.cur.y) * .4, w: T.cur.w + (b.w - T.cur.w) * .4, h: T.cur.h + (b.h - T.cur.h) * .4 } : { x: b.x, y: b.y, w: b.w, h: b.h };
+  const d = petakan(T.cur, vid.videoWidth, vid.videoHeight, r.width, r.height), pad = Math.max(8, d.w * .12);
+  const x = d.x - pad, y = d.y - pad, w = d.w + pad * 2, h = d.h + pad * 2, L = A.lbl;
+  const col = { cari: '#2DD4BF', kenal: '#F59E0B', sukses: '#10B981', gagal: '#EF4444' }[L.s] || '#2DD4BF';
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  g.strokeStyle = col; g.globalAlpha = .5; g.lineWidth = 1.5; rr(g, x, y, w, h, 10); g.stroke(); g.globalAlpha = 1;
+  const c = Math.min(w, h) * .22; g.lineWidth = 4; g.shadowColor = col; g.shadowBlur = 8;
+  [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(k => { g.beginPath(); g.moveTo(k[0], k[1] + k[3] * c); g.lineTo(k[0], k[1]); g.lineTo(k[0] + k[2] * c, k[1]); g.stroke(); });
+  g.shadowBlur = 0;
+  // label nama di atas kotak
+  g.font = '700 15px Inter, system-ui, sans-serif'; const w1 = g.measureText(L.t).width;
+  g.font = '600 12px Inter, system-ui, sans-serif'; const w2 = L.sub ? g.measureText(L.sub).width : 0;
+  const lw = Math.max(w1, w2) + 22, lh = L.sub ? 44 : 28;
+  const lx = Math.max(4, Math.min(r.width - lw - 4, x + w / 2 - lw / 2)); let ly = y - lh - 8; if (ly < 4) ly = y + 8;
+  g.fillStyle = col; rr(g, lx, ly, lw, lh, 8); g.fill();
+  g.fillStyle = L.s === 'kenal' ? '#1c1917' : '#fff'; g.textBaseline = 'middle'; g.textAlign = 'center';
+  g.font = '700 15px Inter, system-ui, sans-serif'; g.fillText(L.t, lx + lw / 2, ly + (L.sub ? 14 : lh / 2));
+  if (L.sub) { g.font = '600 12px Inter, system-ui, sans-serif'; g.fillText(L.sub, lx + lw / 2, ly + 31); }
+}
+
 async function catat(s, extra) {
   const r = await api('absen.catat', Object.assign({ nis: s.nis }, extra));
-  if (!r.success) { setSt('Gagal mencatat: ' + r.message, 'gagal'); toast(r.message, 'error'); return false; }
+  if (!r.success) { A.lbl = { t: s.nama, s: 'gagal', sub: 'Gagal mencatat' }; setSt('Gagal mencatat: ' + r.message, 'gagal'); toast(r.message, 'error'); return false; }
   const a = r.data.absen; A.sudah[a.nis] = a;
-  if (r.data.duplikat) { setSt(`${s.nama} sudah absen pukul ${a.jam}`, 'info'); updProg(); return true; }
+  if (r.data.duplikat) { A.lbl = { t: s.nama, s: 'sukses', sub: `✔ ${a.status} • ${a.jam}` }; setSt(`${s.nama} sudah absen pukul ${a.jam}`, 'info'); updProg(); return true; }
   A.log.unshift(a); A.terakhir = { a, akurasi: extra.akurasi };
-  setSt(`✔ ${s.nama} — ${a.status}`, 'sukses'); updProg(); renderKanan(); return true;
+  A.lbl = { t: s.nama, s: 'sukses', sub: `✔ ${a.status} • ${a.jam}` }; setSt(`✔ ${s.nama} — ${a.status}`, 'sukses'); updProg(); renderKanan(); return true;
 }
 function updProg() {
   const tot = A.siswa.length, sudah = A.siswa.filter(s => A.sudah[s.nis]).length, p = pct(sudah, tot);

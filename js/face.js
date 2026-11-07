@@ -36,7 +36,8 @@ const Wajah = {
       desc: Array.from(r.descriptor), skor: r.detection.score,
       yaw: w > 0 ? (p[30].x - p[0].x) / w : 0.5,          // ~0.5 = menghadap lurus
       pitch: dagu > 0 ? (p[30].y - ey) / dagu : 0.5,      // dipakai relatif terhadap foto pertama
-      lebar: video.videoWidth ? r.detection.box.width / video.videoWidth : 1
+      lebar: video.videoWidth ? r.detection.box.width / video.videoWidth : 1,
+      box: { x: r.detection.box.x, y: r.detection.box.y, w: r.detection.box.width, h: r.detection.box.height }
     };
   },
   jarak(a, b) { let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return Math.sqrt(s); },
