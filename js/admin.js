@@ -36,6 +36,10 @@ function nomorHal(p, n) {
   const a = []; for (let i = 1; i <= n; i++) if (n <= 7 || i === 1 || i === n || Math.abs(i - p) <= 1) a.push(i);
   let out = '', last = 0; a.forEach(i => { if (i - last > 1) out += '<span class="muted">…</span>'; out += `<button data-p="${i}" class="${i === p ? 'on' : ''}">${i}</button>`; last = i; }); return out;
 }
+function labelTabel(el) {
+  const th = [...el.querySelectorAll('thead th')].map(x => x.textContent);
+  el.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { td.dataset.label = th[i] || ''; }));
+}
 function tabelHal(el, kepala, list, size, baris, kosong) {
   let p = 1;
   const gambar = () => {
@@ -44,6 +48,7 @@ function tabelHal(el, kepala, list, size, baris, kosong) {
     el.innerHTML = tot
       ? `<div class="tw"><table><thead><tr>${kepala}</tr></thead><tbody>${sl.map(baris).join('')}</tbody></table></div><div class="pg"><span class="muted">Menampilkan ${(p - 1) * size + 1}–${(p - 1) * size + sl.length} dari ${tot}</span><span class="row" style="gap:4px">${nomorHal(p, n)}</span></div>`
       : `<div class="empty"><div class="ms">inbox</div><p>${kosong}</p></div>`;
+    labelTabel(el);
     el.querySelectorAll('.pg button').forEach(b => b.onclick = () => { p = Number(b.dataset.p); gambar(); });
   };
   gambar();
@@ -475,7 +480,7 @@ async function rPengaturan(my) {
   $('#al').onclick = async e => { const b = e.target.closest('[data-e]'); if (!b || !await tanya('Hapus admin ' + b.dataset.e + '?')) return; const r = await api('admin.hapus', { email: b.dataset.e }); toast(r.message, r.success ? 'ok' : 'error'); if (r.success) { admins.splice(admins.findIndex(x => x.email === b.dataset.e), 1); gAdmin(); } };
   $('#at').onclick = async () => { const r = await api('admin.tambah', { email: $('#ae').value, nama: $('#an').value }); toast(r.message, r.success ? 'ok' : 'error'); if (r.success) { const l = await api('admin.list'); admins.splice(0, admins.length, ...l.data); gAdmin(); $('#ae').value = ''; $('#an').value = ''; } };
   $('#csv').onclick = async () => { const r = await api('pengaturan.simpan', { nama_sekolah: $('#cn').value, jam_masuk: $('#cj').value, toleransi_menit: $('#ct').value, ambang_wajah: $('#ca').value }); toast(r.message, r.success ? 'ok' : 'error'); };
-  const gKelas = () => { $('#kl').innerHTML = S.kelas.length ? `<table><thead><tr><th>Kelas</th><th>Terdaftar</th><th>Token</th><th>Link</th><th></th></tr></thead><tbody>${S.kelas.map(k => `<tr><td><span class="chip">${esc(k.kelas)}</span></td><td>${k.terdaftar}/${k.aktif}</td><td class="mono">${esc(k.token)}</td><td><button class="btn ghost" data-c="${esc(k.token)}"><span class="ms">content_copy</span> Salin link</button></td><td><button class="btn out sm" data-r="${esc(k.kelas)}">Buat ulang</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Belum ada kelas. Tambahkan siswa terlebih dulu.</div>'; };
+  const gKelas = () => { $('#kl').innerHTML = S.kelas.length ? `<table><thead><tr><th>Kelas</th><th>Terdaftar</th><th>Token</th><th>Link</th><th></th></tr></thead><tbody>${S.kelas.map(k => `<tr><td><span class="chip">${esc(k.kelas)}</span></td><td>${k.terdaftar}/${k.aktif}</td><td class="mono">${esc(k.token)}</td><td><button class="btn ghost" data-c="${esc(k.token)}"><span class="ms">content_copy</span> Salin link</button></td><td><button class="btn out sm" data-r="${esc(k.kelas)}">Buat ulang</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Belum ada kelas. Tambahkan siswa terlebih dulu.</div>'; labelTabel($('#kl')); };
   gKelas();
   $('#kl').onclick = async e => {
     const c = e.target.closest('[data-c]'), r = e.target.closest('[data-r]');
