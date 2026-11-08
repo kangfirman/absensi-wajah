@@ -15,18 +15,21 @@ async function mulai() {
   if (!K) return tutup('Link absen tidak lengkap. Minta link absen terbaru kepada guru.');
   tampil('kam'); setSt('Meminta izin kamera…');
   const pKam = Wajah.kamera($('#cam')).then(() => null, e => e);          // kamera langsung diminta/dibuka
+  const pMuat = Wajah.muat(t => setSt(t)).then(() => null, e => e);        // model dibaca dari cache HP (atau diunduh sekali) — paralel
   const st = await api('mandiri.status', { k: K });                        // sambil memeriksa apakah absen dibuka
   if (!st.success || !st.data.buka) { tutup(st.success ? st.data.pesan : st.message); pKam.then(() => Wajah.henti($('#cam'))); return; }
   $('#sek').textContent = String(st.data.namaSekolah || '').toUpperCase();
   const eK = await pKam;
   if (eK) return tutup(eK.name === 'NotAllowedError' ? 'Izin kamera ditolak. Aktifkan izin kamera untuk situs ini di pengaturan browser, lalu muat ulang halaman.' : (eK.message || 'Kamera tidak dapat dibuka.'));
-  try { await Wajah.muat(t => setSt(t)); } catch (e) { return tutup('Gagal memuat model pengenalan wajah. Periksa internet lalu muat ulang.'); }
+  const eM = await pMuat;
+  if (eM) return tutup('Gagal memuat model pengenalan wajah. Periksa internet lalu muat ulang.');
+  setSt(Wajah.jaringan ? 'Model tersimpan di HP — hari berikutnya jauh lebih cepat' : '⚡ Siap (' + (Wajah.ms / 1000).toFixed(1) + ' dtk, dari cache)');
   pindai();
 }
 
 function pindai() {
   S.jalan = true; S.gambar = true; S.kirim = false; S.stabil = 0; S.gagal = 0; S.lbl = CARI; S.trk = { target: null, cur: null }; S.id++;
-  $('#ban').classList.remove('show'); setSt('Hadapkan wajah ke kamera');
+  $('#ban').classList.remove('show');
   trkLoop(); loop(S.id);
 }
 
