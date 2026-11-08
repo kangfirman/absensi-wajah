@@ -455,7 +455,7 @@ async function expPdf() {
 async function rPengaturan(my) {
   $('#konten').innerHTML = `<div class="page"><h2 style="margin-bottom:20px">Pengaturan</h2><div id="pb">${SKEL.split('</div>')[0]}</div></div>`;
   await muatKelas();
-  const [c, a, rs] = await Promise.all([api('pengaturan.get'), api('admin.list'), api('rahasia.status')]);
+  const [c, a, rs, mi] = await Promise.all([api('pengaturan.get'), api('admin.list'), api('rahasia.status'), api('mandiri.info')]);
   if (!aktifNav(my)) return;
   if (!c.success) { $('#pb').innerHTML = `<div class="card empty">${esc(c.message)}</div>`; return; }
   const cfg = c.data, base = new URL('daftar.html', location.href).href;
@@ -468,6 +468,12 @@ async function rPengaturan(my) {
   <div class="card" style="margin-top:20px"><h3>Daftar Admin / Guru</h3><p class="muted">Hanya akun Google berikut yang dapat masuk ke portal ini.</p><div id="al" style="margin:12px 0"></div>
    <div class="row"><input id="ae" type="email" placeholder="email@sekolah.sch.id" style="max-width:280px"><input id="an" placeholder="Nama (opsional)" style="max-width:200px"><button class="btn" id="at">Tambah</button></div></div>
   <div class="card" style="margin-top:20px"><h3>Link Pendaftaran Wajah per Kelas</h3><p class="muted">Bagikan link kelas kepada siswa. Siswa cukup mengisi NIS-nya. Jika token bocor, buat ulang.</p><div id="kl" class="tw" style="margin-top:12px"></div></div>
+  <div class="card" style="margin-top:20px"><h3>Absen Mandiri (HP Siswa)</h3><p class="muted">Siswa absen sendiri lewat ponsel masing-masing tanpa login: kamera langsung terbuka dan wajah dicocokkan di server. Aktifkan hanya pada jam absen.</p>
+   <label class="chk" style="margin:12px 0"><input type="checkbox" id="mnd-on" ${cfg.absen_mandiri === '1' ? 'checked' : ''}><span><b>Aktifkan absen mandiri</b></span></label>
+   <div class="grid g2" style="max-width:420px"><div class="f"><label>Dibuka pukul</label><input type="time" id="mnd-b" value="${esc(cfg.mandiri_buka)}"></div><div class="f"><label>Ditutup pukul</label><input type="time" id="mnd-t" value="${esc(cfg.mandiri_tutup)}"></div></div>
+   <div class="f"><label>Link absen untuk siswa (sudah berisi kode)</label><div class="row"><input id="mnd-link" readonly style="max-width:560px"><button class="btn out" id="mnd-copy"><span class="ms">content_copy</span> Salin</button></div></div>
+   <div class="row"><button class="btn" id="mnd-save">Simpan</button><button class="btn out" id="mnd-kode">Buat kode baru</button></div>
+   <p class="muted" style="font-size:12px;margin-top:10px">Siapa pun yang memegang link bisa membuka kamera, tetapi hanya wajah yang terdaftar yang tercatat. Ganti kode bila link tersebar ke orang yang tidak berhak.</p></div>
   <div class="card" style="margin-top:20px"><h3>Keamanan & Login</h3>
    <div class="f" style="margin-top:12px"><label>Google OAuth Client ID</label><div class="row"><input id="gid" value="${esc(rs.success ? rs.data.googleClientId : '')}" placeholder="xxxx.apps.googleusercontent.com" style="max-width:460px"><button class="btn" id="gsv">Simpan</button></div>
     <div class="muted" style="font-size:12px;margin-top:4px">Authorized JavaScript origin yang harus didaftarkan: <span class="mono">${esc(location.origin)}</span></div></div>
@@ -487,6 +493,12 @@ async function rPengaturan(my) {
     if (c) { const url = base + '?token=' + c.dataset.c; try { await navigator.clipboard.writeText(url); toast('Link disalin.'); } catch (x) { prompt('Salin link ini:', url); } }
     if (r && await tanya(`Buat ulang token kelas ${r.dataset.r}? Link lama langsung tidak berlaku.`)) { const x = await api('kelas.token', { kelas: r.dataset.r }); toast(x.message, x.success ? 'ok' : 'error'); await muatKelas(); gKelas(); }
   };
+  let kodeM = mi.success ? mi.data.kode : '';
+  const linkM = () => kodeM ? new URL('absen.html', location.href).href + '?k=' + kodeM : '(kode belum tersedia — deploy Kode.gs versi terbaru)';
+  $('#mnd-link').value = linkM();
+  $('#mnd-copy').onclick = async () => { try { await navigator.clipboard.writeText(linkM()); toast('Link disalin.'); } catch (x) { prompt('Salin link ini:', linkM()); } };
+  $('#mnd-save').onclick = async () => { const r = await api('pengaturan.simpan', { absen_mandiri: $('#mnd-on').checked ? '1' : '0', mandiri_buka: $('#mnd-b').value, mandiri_tutup: $('#mnd-t').value }); toast(r.message, r.success ? 'ok' : 'error'); };
+  $('#mnd-kode').onclick = async () => { if (!await tanya('Buat kode baru? Link lama langsung tidak berlaku.')) return; const r = await api('mandiri.kode'); if (r.success) { kodeM = r.data.kode; $('#mnd-link').value = linkM(); } toast(r.message, r.success ? 'ok' : 'error'); };
   $('#gsv').onclick = async () => { const r = await api('rahasia.simpan', { kunci: 'GOOGLE_CLIENT_ID', nilai: $('#gid').value }); toast(r.message, r.success ? 'ok' : 'error'); };
   $('#dsv').onclick = async () => { const r = await api('auth.rotasiDarurat', { passwordBaru: $('#dpw').value }); $('#dpw').value = ''; toast(r.message, r.success ? 'ok' : 'error'); };
   $('#kst').onclick = async () => { if (await tanya('Keluar dari semua perangkat?')) { await api('auth.keluarSemua'); keluar(); } };
