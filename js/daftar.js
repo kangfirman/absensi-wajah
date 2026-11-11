@@ -27,7 +27,6 @@ $('#b1').onclick = async () => {
   b.disabled = false; b.textContent = 'Cek Data';
   if (!r.success) { $('#e1').textContent = r.message; return; }
   S.nis = nis; S.token = tok; S.hasil = r.data;
-  if (r.data.statusWajah !== 'Terdaftar') Wajah.muat().catch(() => {});   // siapkan & simpan model di latar belakang selagi siswa membaca persetujuan
   const sudah = r.data.statusWajah === 'Terdaftar';
   $('#hasil').classList.remove('hide');
   $('#hasil').innerHTML = `<div class="muted" style="font-size:12px">NAMA LENGKAP</div><b>${esc(r.data.nama)}</b>
@@ -113,5 +112,5 @@ async function kirim() {
   langkah(4);
 }
 titik();
-if (!configOk()) $('#e1').textContent = 'Aplikasi belum dikonfigurasi. Hubungi admin.';
+if (!configOk()) $('#e1').textContent = 'Aplikasi belum dikonfigurasi (GAS_URL kosong). Hubungi admin.';
 })();
