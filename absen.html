@@ -1,21 +1,41 @@
 <!DOCTYPE html>
-<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Absen Mandiri — SMKSPP byIrpan</title>
+<html lang="id"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Absen Mandiri — Absensi Wajah Siswa</title>
+<meta name="description" content="Absen mandiri dengan pengenalan wajah. Buka, hadapkan wajah, selesai.">
+<meta name="theme-color" content="#0D9488">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Absen"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css"></head>
-<body>
-<div class="hdr"><div class="row between"><small id="sek">ABSENSI SMK SPP Putra Jaya Stabat</small><span class="mono" id="jam" style="color:#fff"></span></div><h2 style="margin-top:4px">Absen Mandiri by Irpan</h2></div>
-<div class="pub" style="margin-top:14px">
- <section id="kam">
-  <div class="vp" id="vp" style="aspect-ratio:3/4;max-height:70vh"><video id="cam" playsinline muted></video><canvas class="trk" id="trk"></canvas>
-   <div class="vp-chip" id="vst">Menyiapkan kamera…</div>
-   <div class="ban" id="ban"><div class="ic"><span class="ms">check</span></div><div><small id="bh">PRESENSI BERHASIL</small><div><b id="bn"></b></div><div class="mono" id="bs"></div></div><div class="tm" id="bt"></div></div>
+<body class="app">
+<header class="hdr"><div class="row between"><span id="sek" style="font-weight:600">Absen Wajah Siswa</span><span class="mono" id="jam" style="color:#fff" aria-label="Jam sekarang"></span></div><h1 style="margin-top:4px;font-size:24px;line-height:32px">Absen Mandiri</h1></header>
+<main class="pub" style="margin-top:14px">
+ <section id="kam" aria-label="Kamera absen">
+  <div class="vp" id="vp" style="aspect-ratio:3/4;max-height:70vh"><video id="cam" playsinline muted aria-label="Pratinjau kamera"></video><canvas class="trk" id="trk" aria-hidden="true"></canvas>
+   <div class="vp-chip" id="vst" role="status" aria-live="polite">Menyiapkan kamera…</div>
+   <div class="ban" id="ban" role="status"><div class="ic"><span class="ms">check</span></div><div><small id="bh">PRESENSI BERHASIL</small><div><b id="bn"></b></div><div class="mono" id="bs"></div></div><div class="tm" id="bt"></div></div>
   </div>
+  <div class="bar prog" id="prog" aria-hidden="true"><i id="progi" style="width:0"></i></div>
+  <section id="pasang" class="card pasang hide" aria-label="Pasang aplikasi">
+   <span class="ms" aria-hidden="true">install_mobile</span>
+   <div class="grow"><b>Pasang di HP</b>
+    <p class="muted">Buka lebih cepat dari layar utama tanpa mengetik link.</p>
+    <p class="muted hide" id="pasang-ios">Ketuk <span class="ms" style="font-size:18px">ios_share</span> Bagikan, lalu pilih <b>Tambahkan ke Layar Utama</b>.</p></div>
+   <button class="btn sm hide" id="pasang-btn" type="button">Pasang</button>
+   <button class="btn ghost sm" id="pasang-tutup" type="button" aria-label="Tutup saran pasang"><span class="ms">close</span></button>
+  </section>
+  <div id="update" class="card upd hide" role="status"><span>Versi baru siap dipakai.</span><button class="btn sm" id="update-btn" type="button">Perbarui</button></div>
   <div class="card" style="margin-top:14px"><b>Petunjuk</b><p class="muted" style="margin:6px 0 0">Hadapkan wajah ke kamera di tempat yang cukup terang. Absen tercatat otomatis setelah wajah dikenali — tidak perlu menekan tombol.</p></div>
  </section>
- <section id="tutup" class="card hide" style="text-align:center"><div class="ms" style="font-size:48px;color:var(--tx2)">lock_clock</div><h3 style="margin:8px 0">Absen belum bisa dilakukan</h3><p class="muted" id="tmsg"></p><button class="btn out" onclick="location.reload()"><span class="ms">refresh</span> Muat ulang</button></section>
- <section id="selesai" class="card hide" style="text-align:center"><div class="ms" style="font-size:64px;color:var(--p)">check_circle</div><h2 id="sn"></h2><p class="muted" id="sk"></p><p id="sp"></p><button class="btn full" id="lagi"><span class="ms">group_add</span> Absen siswa lain</button></section>
- <p class="muted" style="text-align:center;font-size:12px;margin-top:18px">@copyright by Irpan 2026</p>
-</div>
-<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/face.js"></script><script src="js/absen.js"></script>
+ <section id="tutup" class="card hide" style="text-align:center"><div class="ms" style="font-size:48px;color:var(--tx2)" aria-hidden="true">lock_clock</div><h2 style="margin:8px 0">Absen belum bisa dilakukan</h2><p class="muted" id="tmsg"></p>
+  <form id="kodeform" class="hide" style="text-align:left;margin:14px 0"><label for="kodein">Kode atau link dari guru</label><input id="kodein" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Tempel link atau ketik kodenya"><div class="err-t" id="kodeerr" role="alert"></div><button class="btn full" style="margin-top:10px" type="submit">Simpan dan coba lagi</button></form>
+  <button class="btn out" type="button" onclick="location.reload()"><span class="ms" aria-hidden="true">refresh</span> Muat ulang</button></section>
+ <section id="selesai" class="card hide" style="text-align:center"><div class="ms" style="font-size:64px;color:var(--p)" aria-hidden="true">check_circle</div><h2 id="sn"></h2><p class="muted" id="sk"></p><p id="sp"></p><button class="btn full" id="lagi" type="button"><span class="ms" aria-hidden="true">group_add</span> Absen siswa lain</button></section>
+ <p class="muted" style="text-align:center;font-size:12px;margin-top:18px">Data wajah dicocokkan di server sekolah dan tidak disimpan sebagai foto.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/face.js"></script><script src="js/absen.js"></script><script src="js/pwa.js"></script>
 </body></html>

@@ -1,10 +1,8 @@
-# Absensi Wajah Siswa
+# Absensi Wajah Siswa — versi Supabase
 
-Frontend statis (GitHub Pages) untuk sistem absensi wajah. Backend: Google Apps Script + Google Sheets (berkas `Kode.gs`, **tidak** disertakan di repo ini).
+Frontend statis (GitHub Pages) + Supabase (Postgres + Auth). Tidak memakai Google Apps Script lagi.
 
-- `index.html` — halaman pilihan peran
-- `daftar.html` — pendaftaran wajah siswa (ponsel)
-- `admin.html` — portal guru: dashboard, absen wajah, data siswa, rekap, pengaturan
-- `js/config.js` — isi `GAS_URL` (URL `/exec`)
+- `index.html` — pilihan peran · `daftar.html` — pendaftaran wajah siswa · `absen.html` — absen mandiri HP siswa (PWA: `manifest.json`, `sw.js`, `icons/`, `js/pwa.js`) · `admin.html` — portal guru
+- `js/config.js` — isi `SUPABASE_URL` dan `SUPABASE_ANON_KEY` (kunci publik; jangan pernah kunci service_role/secret)
 
-Panduan lengkap: `PANDUAN-INSTALASI.md`. Pengenalan wajah berjalan sepenuhnya di browser (face-api.js); server hanya menyimpan angka pemetaan wajah, bukan foto.
+Panduan lengkap: `PANDUAN-SUPABASE.md`. Pencocokan wajah siswa (absen mandiri) dilakukan di database; data wajah tidak dikirim ke HP.

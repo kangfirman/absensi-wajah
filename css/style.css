@@ -92,3 +92,15 @@ td{padding:10px 12px;border-top:1px solid var(--bd);vertical-align:middle}tbody 
  .pg{justify-content:center}
 }
 @media(max-width:520px){.g4{grid-template-columns:1fr}.metric .n{font-size:30px}.metric{padding:14px}}
+
+/* ===== PWA / aplikasi absen siswa ===== */
+:focus-visible{outline:3px solid var(--p-l);outline-offset:2px}
+body.app{min-height:100vh;min-height:100dvh}
+body.app .hdr{padding-top:calc(18px + env(safe-area-inset-top))}
+body.app .pub{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+.pub .btn{min-height:44px}.pub .btn.sm{min-height:40px}
+.pasang{display:flex;gap:12px;align-items:flex-start;margin-top:14px;border-color:var(--p-l)}
+.pasang>.ms{font-size:28px;color:var(--p);flex:none}.pasang p{margin:4px 0 0;font-size:13px}.pasang .btn{flex:none}
+.upd{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:14px;background:var(--p-t);border-color:var(--p-l)}
+.prog{margin-top:10px}.prog i{transition:width .25s}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}

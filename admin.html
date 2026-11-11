@@ -8,12 +8,14 @@
  <div class="logo" style="justify-content:center"><span class="mark ms">face</span></div>
  <h2 style="text-align:center">Masuk Portal Guru</h2>
  <div id="lmsg" class="muted" style="text-align:center;margin:8px 0 18px">Hanya akun guru yang terdaftar yang dapat mengakses panel ini.</div>
- <div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>
- <div id="ditolak" class="hide" style="text-align:center"><div class="ms" style="font-size:44px;color:var(--err)">lock</div><h3>Akses Tidak Diizinkan</h3><p id="dtxt" class="muted"></p><button class="btn out" id="ganti">Ganti Akun</button></div>
- <form id="darurat" class="hide" style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px" autocomplete="off">
-  <h3>Akses Darurat</h3><div class="f"><label>Nama pengguna</label><input id="du" autocomplete="off"></div>
-  <div class="f"><label>Kata sandi</label><input id="dp" type="password" autocomplete="off"></div><button class="btn full" type="submit">Masuk Darurat</button>
+ <button class="btn out full" id="gbtn" type="button" style="min-height:44px"><span class="ms">login</span> Masuk dengan Google</button>
+ <p class="muted" style="text-align:center;margin:14px 0 0;font-size:13px"><a href="#" id="pw-toggle" style="color:var(--p)">Atau masuk dengan email &amp; kata sandi</a></p>
+ <form id="emailform" class="hide" style="margin-top:14px">
+  <div class="f"><label>Email</label><input id="le" type="email" autocomplete="username" required></div>
+  <div class="f"><label>Kata sandi</label><input id="lp" type="password" autocomplete="current-password" required></div>
+  <button class="btn full" type="submit">Masuk</button>
  </form>
+ <div id="ditolak" class="hide" style="text-align:center"><div class="ms" style="font-size:44px;color:var(--err)">lock</div><h3>Akses Tidak Diizinkan</h3><p id="dtxt" class="muted"></p><button class="btn out" id="ganti">Ganti Akun</button></div>
  <p style="text-align:center;margin-top:18px"><a href="daftar.html" style="color:var(--p);font-size:13px">Siswa? Daftarkan wajah di sini</a></p>
 </div></div>
 
@@ -35,5 +37,5 @@
   <main id="konten"></main>
  </div>
 </div>
-<script src="js/config.js"></script><script src="js/api.js"></script><script src="js/face.js"></script><script src="js/admin.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/face.js"></script><script src="js/admin.js"></script>
 </body></html>

@@ -6,8 +6,7 @@ const CDN = {
   chart: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
   xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
   jspdf: 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
-  autotable: 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
-  gsi: 'https://accounts.google.com/gsi/client'
+  autotable: 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
 };
 const NAV = { dashboard: 'Dashboard', absen: 'Absen Wajah', siswa: 'Data Siswa', rekap: 'Rekap & Laporan', pengaturan: 'Pengaturan' };
 const WARNA = ['#0D9488', '#4F46E5', '#D97706', '#0284C7', '#DB2777', '#7C3AED', '#059669', '#EA580C'];
@@ -55,53 +54,55 @@ function tabelHal(el, kepala, list, size, baris, kosong) {
 }
 const opsiKelas = (semua, pilih) => (semua ? `<option value="">${semua}</option>` : '') + S.kelas.map(k => `<option ${k.kelas === pilih ? 'selected' : ''}>${esc(k.kelas)}</option>`).join('');
 
-// ============ LOGIN ============
+// ============ LOGIN (Supabase Auth) ============
 async function mulai() {
   document.addEventListener('sesi-habis', () => { toast('Sesi berakhir, silakan masuk lagi.', 'warn'); setTimeout(() => location.reload(), 800); });
-  const s = Sesi.get();
-  if (s) { S.me = s.me; const r = await api('me'); if (r.success) return masuk(); }
+  if (pesanConfig()) return tampilLogin();
+  await Sesi.init();
+  if (Sesi.get()) return cekMasuk(true);
   tampilLogin();
 }
-async function tampilLogin() {
+function tampilLogin() {
   $('#app').classList.add('hide'); $('#login').classList.remove('hide');
-  $('#darurat').classList.toggle('hide', location.hash !== '#darurat');
-  if (!configOk()) { $('#lmsg').textContent = pesanConfig(); return; }
-  const c = await api('auth.config');
-  if (!c.success) { $('#lmsg').innerHTML = esc(c.message) + `<br><a href="${esc(window.APP_CONFIG.GAS_URL.trim())}?action=ping" target="_blank" rel="noopener" style="color:var(--p)">Tes URL backend ↗</a>`; return; }
-  if (!c.data.googleClientId) { $('#gbtn').innerHTML = '<p class="muted" style="text-align:center;font-size:13px">Login Google belum dikonfigurasi. Buka <b>admin.html#darurat</b> untuk masuk dengan akses darurat lalu isi Client ID di Pengaturan.</p>'; return; }
-  try {
-    await muatSkrip(CDN.gsi);
-    google.accounts.id.initialize({ client_id: c.data.googleClientId, callback: onGoogle });
-    google.accounts.id.renderButton($('#gbtn'), { theme: 'outline', size: 'large', width: 300, text: 'signin_with', locale: 'id' });
-  } catch (e) { $('#lmsg').textContent = 'Gagal memuat login Google. Periksa koneksi internet.'; }
+  if (pesanConfig()) $('#lmsg').textContent = pesanConfig();
 }
-async function onGoogle(resp) {
-  $('#lmsg').textContent = 'Memverifikasi akun…';
-  const r = await api('auth.google', { idToken: resp.credential });
-  if (r.success) { Sesi.set({ token: r.data.token, exp: r.data.exp, me: r.data.me }); S.me = r.data.me; return masuk(); }
-  $('#lmsg').textContent = '';
-  if (r.code === 'DENIED') {
-    $('#gbtn').classList.add('hide'); $('#ditolak').classList.remove('hide');
-    $('#dtxt').textContent = r.message + ' Hubungi admin sekolah untuk didaftarkan.';
-    $('#ganti').onclick = () => { try { google.accounts.id.disableAutoSelect(); } catch (e) {} location.reload(); };
-  } else $('#lmsg').textContent = r.message;
+async function cekMasuk(awal) {
+  const r = await api('me');
+  if (r.success) { S.me = r.data.me; return masuk(); }
+  if (r.code === 'DENIED') return tampilDitolak(r.message);
+  if (awal && r.code === 'AUTH') return tampilLogin();
+  tampilLogin(); $('#lmsg').textContent = r.message || 'Gagal memeriksa akun.';
 }
-$('#darurat').onsubmit = async e => {
-  e.preventDefault();
-  const r = await api('auth.darurat', { username: $('#du').value.trim(), password: $('#dp').value });
-  $('#dp').value = '';
-  if (!r.success) return toast(r.message, 'error');
-  Sesi.set({ token: r.data.token, exp: r.data.exp, me: r.data.me }); S.me = r.data.me; masuk();
+function tampilDitolak(pesan) {
+  $('#app').classList.add('hide'); $('#login').classList.remove('hide');
+  ['#gbtn', '#emailform'].forEach(x => $(x).classList.add('hide')); $('#pw-toggle').parentElement.classList.add('hide');
+  $('#ditolak').classList.remove('hide'); $('#lmsg').textContent = '';
+  $('#dtxt').textContent = pesan + ' Hubungi admin sekolah untuk didaftarkan.';
+  $('#ganti').onclick = async () => { await Sesi.keluar(); location.reload(); };
+}
+$('#gbtn').onclick = async () => {
+  const c = sb(); if (!c) return toast(pesanConfig() || 'Pustaka Supabase belum siap. Muat ulang halaman.', 'error');
+  const r = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+  if (r.error) toast('Gagal memulai login Google: ' + r.error.message, 'error');
 };
-function keluar(e) { if (e) e.preventDefault(); Sesi.clear(); try { google.accounts.id.disableAutoSelect(); } catch (x) {} location.hash = ''; location.reload(); }
+$('#pw-toggle').onclick = e => { e.preventDefault(); $('#emailform').classList.toggle('hide'); };
+$('#emailform').onsubmit = async e => {
+  e.preventDefault();
+  const c = sb(); if (!c) return toast(pesanConfig() || 'Pustaka Supabase belum siap.', 'error');
+  const r = await c.auth.signInWithPassword({ email: $('#le').value.trim(), password: $('#lp').value });
+  $('#lp').value = '';
+  if (r.error) return toast(/Invalid login/i.test(r.error.message) ? 'Email atau kata sandi salah.' : 'Gagal masuk: ' + r.error.message, 'error');
+  await Sesi.init(); cekMasuk(false);
+};
+function keluar(e) { if (e) e.preventDefault(); Sesi.keluar().then(() => { location.hash = ''; location.reload(); }); }
 $('#keluar').onclick = keluar; $('#keluar2').onclick = keluar;
 
 async function masuk() {
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
-  $('#user').textContent = (S.me.nama || S.me.email) + (S.me.darurat ? ' (darurat)' : '');
+  $('#user').textContent = (S.me.nama || S.me.email);
   $('#tglTop').textContent = fmtTgl(hariIni());
   await muatKelas();
-  if (!location.hash || location.hash === '#darurat') location.hash = '#dashboard'; else route();
+  if (!location.hash) location.hash = '#dashboard'; else route();
 }
 async function muatKelas() {
   const k = await api('kelas.list'); S.kelas = k.success ? k.data : [];
@@ -119,7 +120,7 @@ function route() {
   $('#judul').textContent = NAV[h];
   HAL[h](++S.nav);
 }
-window.addEventListener('hashchange', () => { if (location.hash !== '#darurat') route(); });
+window.addEventListener('hashchange', route);
 
 // ============ DASHBOARD ============
 async function rDashboard(my) {
@@ -455,7 +456,7 @@ async function expPdf() {
 async function rPengaturan(my) {
   $('#konten').innerHTML = `<div class="page"><h2 style="margin-bottom:20px">Pengaturan</h2><div id="pb">${SKEL.split('</div>')[0]}</div></div>`;
   await muatKelas();
-  const [c, a, rs, mi] = await Promise.all([api('pengaturan.get'), api('admin.list'), api('rahasia.status'), api('mandiri.info')]);
+  const [c, a, mi] = await Promise.all([api('pengaturan.get'), api('admin.list'), api('mandiri.info')]);
   if (!aktifNav(my)) return;
   if (!c.success) { $('#pb').innerHTML = `<div class="card empty">${esc(c.message)}</div>`; return; }
   const cfg = c.data, base = new URL('daftar.html', location.href).href;
@@ -473,11 +474,10 @@ async function rPengaturan(my) {
    <div class="grid g2" style="max-width:420px"><div class="f"><label>Dibuka pukul</label><input type="time" id="mnd-b" value="${esc(cfg.mandiri_buka)}"></div><div class="f"><label>Ditutup pukul</label><input type="time" id="mnd-t" value="${esc(cfg.mandiri_tutup)}"></div></div>
    <div class="f"><label>Link absen untuk siswa (sudah berisi kode)</label><div class="row"><input id="mnd-link" readonly style="max-width:560px"><button class="btn out" id="mnd-copy"><span class="ms">content_copy</span> Salin</button></div></div>
    <div class="row"><button class="btn" id="mnd-save">Simpan</button><button class="btn out" id="mnd-kode">Buat kode baru</button></div>
-   <p class="muted" style="font-size:12px;margin-top:10px">Siapa pun yang memegang link bisa membuka kamera, tetapi hanya wajah yang terdaftar yang tercatat. Ganti kode bila link tersebar ke orang yang tidak berhak.</p></div>
+   <p class="muted" style="font-size:12px;margin-top:10px">Siswa dapat memasang halaman ini sebagai aplikasi: buka link di Chrome lalu pilih <b>Pasang aplikasi</b> (iPhone: <b>Bagikan → Tambahkan ke Layar Utama</b>). Siapa pun yang memegang link bisa membuka kamera, tetapi hanya wajah yang terdaftar yang tercatat. Ganti kode bila link tersebar ke orang yang tidak berhak.</p></div>
   <div class="card" style="margin-top:20px"><h3>Keamanan & Login</h3>
-   <div class="f" style="margin-top:12px"><label>Google OAuth Client ID</label><div class="row"><input id="gid" value="${esc(rs.success ? rs.data.googleClientId : '')}" placeholder="xxxx.apps.googleusercontent.com" style="max-width:460px"><button class="btn" id="gsv">Simpan</button></div>
-    <div class="muted" style="font-size:12px;margin-top:4px">Authorized JavaScript origin yang harus didaftarkan: <span class="mono">${esc(location.origin)}</span></div></div>
-   <div class="f" style="max-width:360px"><label>Ganti kata sandi akses darurat</label><input id="dpw" type="password" autocomplete="new-password" placeholder="Min. 12 karakter, huruf + angka"><button class="btn out" id="dsv" style="margin-top:8px">Ganti Kata Sandi</button></div>
+   <p class="muted">Login dikelola Supabase Auth. Hanya email yang ada di <b>Daftar Admin</b> di atas yang dapat membuka portal ini.</p>
+   <div class="f" style="max-width:360px;margin-top:12px"><label>Ganti kata sandi akun ini</label><input id="dpw" type="password" autocomplete="new-password" placeholder="Min. 8 karakter"><button class="btn out" id="dsv" style="margin-top:8px">Ganti Kata Sandi</button></div>
    <button class="btn out" id="kst"><span class="ms">logout</span> Keluar dari semua perangkat</button></div>`;
 
   const admins = a.success ? a.data : [];
@@ -494,14 +494,13 @@ async function rPengaturan(my) {
     if (r && await tanya(`Buat ulang token kelas ${r.dataset.r}? Link lama langsung tidak berlaku.`)) { const x = await api('kelas.token', { kelas: r.dataset.r }); toast(x.message, x.success ? 'ok' : 'error'); await muatKelas(); gKelas(); }
   };
   let kodeM = mi.success ? mi.data.kode : '';
-  const linkM = () => kodeM ? new URL('absen.html', location.href).href + '?k=' + kodeM : '(kode belum tersedia — deploy Kode.gs versi terbaru)';
+  const linkM = () => kodeM ? new URL('absen.html', location.href).href + '?k=' + kodeM : '(kode belum tersedia — jalankan ulang SETUP_SUPABASE.sql)';
   $('#mnd-link').value = linkM();
   $('#mnd-copy').onclick = async () => { try { await navigator.clipboard.writeText(linkM()); toast('Link disalin.'); } catch (x) { prompt('Salin link ini:', linkM()); } };
   $('#mnd-save').onclick = async () => { const r = await api('pengaturan.simpan', { absen_mandiri: $('#mnd-on').checked ? '1' : '0', mandiri_buka: $('#mnd-b').value, mandiri_tutup: $('#mnd-t').value }); toast(r.message, r.success ? 'ok' : 'error'); };
   $('#mnd-kode').onclick = async () => { if (!await tanya('Buat kode baru? Link lama langsung tidak berlaku.')) return; const r = await api('mandiri.kode'); if (r.success) { kodeM = r.data.kode; $('#mnd-link').value = linkM(); } toast(r.message, r.success ? 'ok' : 'error'); };
-  $('#gsv').onclick = async () => { const r = await api('rahasia.simpan', { kunci: 'GOOGLE_CLIENT_ID', nilai: $('#gid').value }); toast(r.message, r.success ? 'ok' : 'error'); };
-  $('#dsv').onclick = async () => { const r = await api('auth.rotasiDarurat', { passwordBaru: $('#dpw').value }); $('#dpw').value = ''; toast(r.message, r.success ? 'ok' : 'error'); };
-  $('#kst').onclick = async () => { if (await tanya('Keluar dari semua perangkat?')) { await api('auth.keluarSemua'); keluar(); } };
+  $('#dsv').onclick = async () => { const pw = $('#dpw').value; if (pw.length < 8) return toast('Kata sandi minimal 8 karakter.', 'warn'); const r = await sb().auth.updateUser({ password: pw }); $('#dpw').value = ''; toast(r.error ? r.error.message : 'Kata sandi diperbarui.', r.error ? 'error' : 'ok'); };
+  $('#kst').onclick = async () => { if (await tanya('Keluar dari semua perangkat?')) { await Sesi.keluar(true); location.hash = ''; location.reload(); } };
 }
 
 mulai();
