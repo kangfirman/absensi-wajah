@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Periksa Aplikasi — Absen</title><meta name="theme-color" content="#0D9488">
+<link rel="manifest" href="manifest.json"><link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css"></head>
+<body class="app">
+<header class="hdr"><div class="row between"><span style="font-weight:600">Absen Wajah Siswa</span><a href="absen.html" style="color:#fff">Kembali ke absen</a></div><h1 style="margin-top:4px;font-size:24px;line-height:32px">Periksa Aplikasi</h1></header>
+<main class="pub" style="margin-top:14px">
+ <div class="card"><p class="muted" style="margin:0 0 12px">Halaman ini memeriksa apakah aplikasi absen siap dipasang dan dipakai di HP ini. Jika ada kendala, tekan <b>Salin laporan</b> lalu kirim ke guru/pengelola.</p>
+  <div class="row"><button class="btn" id="ulang" type="button"><span class="ms" aria-hidden="true">refresh</span> Periksa ulang</button><button class="btn out" id="salin" type="button"><span class="ms" aria-hidden="true">content_copy</span> Salin laporan</button></div></div>
+ <section class="card" style="margin-top:14px" aria-live="polite"><div id="ringkas" class="muted">Memeriksa…</div><div id="hasil" style="margin-top:8px"></div></section>
+ <section class="card" style="margin-top:14px"><b>Pemulihan</b><p class="muted" style="margin:6px 0 12px">Jika aplikasi menampilkan versi lama atau macet, hapus cache aplikasi. Model wajah (±12 MB) akan diunduh ulang saat dibuka berikutnya.</p>
+  <button class="btn out" id="reset" type="button"><span class="ms" aria-hidden="true">delete_sweep</span> Hapus cache aplikasi</button></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/api.js"></script><script src="js/pwa-cek.js"></script>
+</body></html>

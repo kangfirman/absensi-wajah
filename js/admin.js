@@ -13,7 +13,7 @@ const WARNA = ['#0D9488', '#4F46E5', '#D97706', '#0284C7', '#DB2777', '#7C3AED',
 const SKEL = '<div class="grid g4"><div class="skel" style="height:120px"></div><div class="skel" style="height:120px"></div><div class="skel" style="height:120px"></div><div class="skel" style="height:120px"></div></div><div class="skel" style="height:280px;margin-top:20px"></div>';
 
 const ava = n => { n = String(n || '?'); const t = n.trim().split(/\s+/); let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `<span class="ava" style="background:${WARNA[h % WARNA.length]}">${esc((t[0][0] + (t[1] ? t[1][0] : '')).toUpperCase())}</span>`; };
-const pill = s => `<span class="pill ${({ Hadir: 'ok', Terlambat: 'warn', Izin: 'info', Sakit: 'info', Terdaftar: 'ok', 'Belum Daftar': 'warn', Nonaktif: 'err', 'Belum Hadir': 'err' })[s] || 'info'}">${esc(s)}</span>`;
+const pill = s => `<span class="pill ${({ Hadir: 'ok', Terlambat: 'warn', Izin: 'info', Sakit: 'info', Terdaftar: 'ok', 'Belum Daftar': 'warn', Nonaktif: 'err', 'Belum Hadir': 'err', Alpa: 'err' })[s] || 'info'}">${esc(s)}</span>`;
 const hariIni = () => new Date().toLocaleDateString('sv-SE');
 const geser = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE'); };
 const fmtTgl = (t, o) => new Date(t + 'T00:00:00').toLocaleDateString('id-ID', o || { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -403,7 +403,7 @@ async function rRekap(my) {
   const f = S.rekapF || { dari: geser(-6), sampai: hariIni(), kelas: '', status: '', q: '', mode: 'grafik' };
   $('#konten').innerHTML = `<div class="page"><div class="row between"><h2>Rekap & Laporan</h2><div class="row"><button class="btn out" id="xx"><span class="ms">table_view</span> Unduh Excel</button><button class="btn out" id="xp"><span class="ms">picture_as_pdf</span> Unduh PDF</button></div></div>
    <div class="card" style="margin-bottom:20px"><div class="row"><input type="date" id="rd" value="${f.dari}" style="width:auto"><span class="muted">s/d</span><input type="date" id="rs" value="${f.sampai}" style="width:auto"><select id="rk" style="width:auto">${opsiKelas('Semua Kelas', f.kelas)}</select>
-    <select id="rt" style="width:auto"><option value="">Semua Status</option>${['Hadir', 'Terlambat', 'Izin', 'Sakit'].map(x => `<option ${f.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select><input id="rq" placeholder="Cari nama / NIS" value="${esc(f.q)}" style="max-width:220px"><button class="btn" id="rg">Terapkan</button>
+    <select id="rt" style="width:auto"><option value="">Semua Status</option>${['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpa'].map(x => `<option ${f.status === x ? 'selected' : ''} value="${x}">${x === 'Alpa' ? 'Alpa (tidak absen)' : x}</option>`).join('')}</select><input id="rq" placeholder="Cari nama / NIS" value="${esc(f.q)}" style="max-width:220px"><button class="btn" id="rg">Terapkan</button>
     <div class="seg"><button data-m="grafik" class="${f.mode === 'grafik' ? 'on' : ''}">Grafik</button><button data-m="tabel" class="${f.mode === 'tabel' ? 'on' : ''}">Tabel</button></div></div></div><div id="rb">${SKEL.split('</div>')[0]}</div></div>`;
   const muat = async () => {
     bersihChart();
@@ -421,16 +421,22 @@ async function rRekap(my) {
 function gambarRekap(mode) {
   const d = S.rekap, el = $('#rb');
   if (!d.rows.length) { el.innerHTML = '<div class="card empty"><div class="ms">inbox</div><p>Tidak ada data absensi pada filter ini.</p></div>'; return; }
-  const note = d.terpotong ? '<p class="muted">Menampilkan 5.000 data terbaru. Persempit rentang tanggal untuk data lengkap.</p>' : '';
+  const ps = d.perStatus || {};
+  const chips = ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpa'].map(x => `<button type="button" class="chip" data-st="${x}" style="border:0;cursor:pointer;font:inherit" aria-label="Tampilkan hanya ${x}">${x} <b>${ps[x] || 0}</b></button>`).join(' ');
+  const note = `<div class="row" style="gap:8px;margin-bottom:10px">${chips}</div>`
+    + (d.alpaDilewati ? '<p class="muted" style="font-size:12px">Rentang lebih dari 92 hari: alpa tidak dihitung. Persempit rentang tanggal untuk melihat alpa.</p>'
+      : '<p class="muted" style="font-size:12px">Alpa = siswa aktif tanpa catatan absen pada hari sekolah (hari yang punya catatan absensi). Hari ini ditampilkan sebagai “Belum Hadir”. Klik salah satu status di atas untuk menyaring.</p>')
+    + (d.terpotong ? '<p class="muted">Menampilkan 5.000 data terbaru. Persempit rentang tanggal untuk data lengkap.</p>' : '');
+  el.onclick = e => { const b = e.target.closest('[data-st]'); if (!b) return; $('#rt').value = b.dataset.st; const t = document.querySelector('.seg [data-m=tabel]'); if (t) t.click(); $('#rg').click(); };
   if (mode === 'tabel') {
     el.innerHTML = `<div class="card">${note}<div id="rtb"></div></div>`;
     tabelHal($('#rtb'), '<th>Tanggal</th><th>Jam</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th><th>Metode</th>', d.rows, 25,
-      a => `<tr><td class="mono">${esc(a.tanggal)}</td><td class="mono">${esc(a.jam)}</td><td class="mono muted">${esc(a.nis)}</td><td>${esc(a.nama)}</td><td><span class="chip">${esc(a.kelas)}</span></td><td>${pill(a.status)}</td><td>${esc(a.metode)}</td></tr>`, 'Kosong.');
+      a => `<tr><td class="mono">${esc(a.tanggal)}</td><td class="mono">${esc(a.jam || '-')}</td><td class="mono muted">${esc(a.nis)}</td><td>${esc(a.nama)}</td><td><span class="chip">${esc(a.kelas)}</span></td><td>${pill(a.status)}</td><td>${esc(a.metode || '-')}</td></tr>`, 'Kosong.');
     return;
   }
   el.innerHTML = `${note}<div class="grid g2"><div class="card"><h3>Perbandingan per Kelas</h3><div class="cv"><canvas id="r1"></canvas></div></div><div class="card"><h3>Proporsi Status</h3><div class="cv"><canvas id="r2"></canvas></div></div></div><div class="card" style="margin-top:20px"><h3>Tren Harian</h3><div class="cv"><canvas id="r3"></canvas></div></div>`;
   const ks = Object.keys(d.perKelas).sort((a, b) => a.localeCompare(b, 'id', { numeric: true })), hs = Object.keys(d.perHari).sort();
-  const W = { Hadir: '#10B981', Terlambat: '#F59E0B', Izin: '#0284C7', Sakit: '#6366F1' }, opsi = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
+  const W = { Hadir: '#10B981', Terlambat: '#F59E0B', Izin: '#0284C7', Sakit: '#6366F1', Alpa: '#EF4444' }, opsi = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
   chart($('#r1'), { type: 'bar', data: { labels: ks, datasets: Object.keys(W).map(s => ({ label: s, data: ks.map(k => d.perKelas[k][s]), backgroundColor: W[s] })) }, options: Object.assign({}, opsi, { scales: { x: { stacked: true }, y: { stacked: true } } }) });
   chart($('#r2'), { type: 'doughnut', data: { labels: Object.keys(W), datasets: [{ data: Object.keys(W).map(s => d.perStatus[s]), backgroundColor: Object.values(W) }] }, options: Object.assign({}, opsi, { cutout: '60%' }) });
   chart($('#r3'), { type: 'line', data: { labels: hs.map(t => fmtTgl(t, { day: 'numeric', month: 'short' })), datasets: [{ label: 'Hadir + Terlambat', data: hs.map(t => d.perHari[t].Hadir + d.perHari[t].Terlambat), borderColor: '#4F46E5', backgroundColor: 'rgba(79,70,229,.12)', fill: true, tension: .3 }] }, options: opsi });
@@ -474,7 +480,7 @@ async function rPengaturan(my) {
    <div class="grid g2" style="max-width:420px"><div class="f"><label>Dibuka pukul</label><input type="time" id="mnd-b" value="${esc(cfg.mandiri_buka)}"></div><div class="f"><label>Ditutup pukul</label><input type="time" id="mnd-t" value="${esc(cfg.mandiri_tutup)}"></div></div>
    <div class="f"><label>Link absen untuk siswa (sudah berisi kode)</label><div class="row"><input id="mnd-link" readonly style="max-width:560px"><button class="btn out" id="mnd-copy"><span class="ms">content_copy</span> Salin</button></div></div>
    <div class="row"><button class="btn" id="mnd-save">Simpan</button><button class="btn out" id="mnd-kode">Buat kode baru</button></div>
-   <p class="muted" style="font-size:12px;margin-top:10px">Siswa dapat memasang halaman ini sebagai aplikasi: buka link di Chrome lalu pilih <b>Pasang aplikasi</b> (iPhone: <b>Bagikan → Tambahkan ke Layar Utama</b>). Siapa pun yang memegang link bisa membuka kamera, tetapi hanya wajah yang terdaftar yang tercatat. Ganti kode bila link tersebar ke orang yang tidak berhak.</p></div>
+   <p class="muted" style="font-size:12px;margin-top:10px">Siswa dapat memasang halaman ini sebagai aplikasi (cek di HP siswa lewat <b>pwa-cek.html</b> bila ada kendala): buka link di Chrome lalu pilih <b>Pasang aplikasi</b> (iPhone: <b>Bagikan → Tambahkan ke Layar Utama</b>). Siapa pun yang memegang link bisa membuka kamera, tetapi hanya wajah yang terdaftar yang tercatat. Ganti kode bila link tersebar ke orang yang tidak berhak.</p></div>
   <div class="card" style="margin-top:20px"><h3>Keamanan & Login</h3>
    <p class="muted">Login dikelola Supabase Auth. Hanya email yang ada di <b>Daftar Admin</b> di atas yang dapat membuka portal ini.</p>
    <div class="f" style="max-width:360px;margin-top:12px"><label>Ganti kata sandi akun ini</label><input id="dpw" type="password" autocomplete="new-password" placeholder="Min. 8 karakter"><button class="btn out" id="dsv" style="margin-top:8px">Ganti Kata Sandi</button></div>
