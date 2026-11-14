@@ -4,10 +4,10 @@
  * - pustaka supabase-js & font: tampilkan cache, perbarui di latar belakang
  * - Tidak menyentuh: panggilan Supabase (API/login) dan model wajah (sudah di-cache oleh js/face.js)
  * Naikkan VERSI setiap kali berkas aplikasi berubah agar HP siswa memperbarui cache. */
-const VERSI = 'v1.0.0';
+const VERSI = 'v1.1.0';
 const SHELL = 'absen-shell-' + VERSI, RUNTIME = 'absen-rt-' + VERSI;
 const PRE = ['./absen.html', './css/style.css', './js/config.js', './js/api.js', './js/face.js', './js/absen.js', './js/pwa.js',
-             './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
+             './manifest.json', './offline.html', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 const CDN_PRE = ['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'];
 
 self.addEventListener('install', e => e.waitUntil((async () => {
@@ -44,7 +44,10 @@ async function networkFirst(req, nama, batas) {
   } catch (e) {
     const hit = await c.match(kunci(req));
     if (hit) return hit;
-    if (req.mode === 'navigate') { const a = await c.match(new URL('./absen.html', self.registration.scope).href); if (a) return a; }
+    if (req.mode === 'navigate') {
+      const a = await c.match(new URL('./absen.html', self.registration.scope).href); if (a) return a;
+      const o = await c.match(new URL('./offline.html', self.registration.scope).href); if (o) return o;
+    }
     return Response.error();
   }
 }

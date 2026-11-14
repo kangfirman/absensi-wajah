@@ -178,8 +178,9 @@ function setSt(t, kls) {
 function rAbsen(my) {
   A.jalan = false; A.jeda = false; A.log = []; A.sudah = {}; A.terakhir = null;
   $('#konten').innerHTML = `<div class="page">
-  <div class="card row between" style="margin-bottom:20px"><div class="row"><select id="ak" style="width:auto">${opsiKelas('Semua Kelas')}</select><span class="chip mono" id="jam">--:--:--</span><span class="chip" id="sesi">Sesi belum dimulai</span></div>
-   <div class="row"><button class="btn out" id="jeda" disabled><span class="ms">pause</span> Jeda Sesi</button><button class="btn ind" id="fs"><span class="ms">fullscreen</span> Layar Penuh</button></div></div>
+  <div class="card row between" style="margin-bottom:20px"><div class="row"><select id="ak" style="width:auto">${opsiKelas('Semua Kelas', S.absenKelas)}</select><span class="chip mono" id="jam">--:--:--</span><span class="chip" id="sesi">Sesi belum dimulai</span></div>
+   <div class="row"><button class="btn out" id="jeda" disabled><span class="ms">pause</span> Jeda Sesi</button><button class="btn dng" id="akhiri" disabled><span class="ms">stop_circle</span> Akhiri Sesi</button><button class="btn ind" id="fs"><span class="ms">fullscreen</span> Layar Penuh</button></div></div>
+  <p class="muted" id="hintsesi" style="margin:-8px 0 14px;font-size:12px"></p>
   <div class="grid g-main"><div>
    <div class="vp" id="vp"><video id="cam" playsinline muted></video><canvas class="trk" id="trk"></canvas><div class="vp-chip" id="vst">Belum dimulai</div><div class="ban" id="ban"><div class="ic"><span class="ms">check</span></div><div><small>PRESENSI BERHASIL</small><div><b id="bn"></b></div><div class="mono" id="bs"></div></div><div class="tm" id="bt"></div></div><button class="btn warn vp-btn hide" id="man"><span class="ms">edit_note</span> Input Absen Manual</button>
     <div class="vp-cover" id="cover"><div><div class="ms" style="font-size:52px">face</div><h3 style="color:#fff;margin:8px 0">Mulai Sesi Absen</h3><p>Pilih kelas lalu mulai. Browser akan meminta izin kamera.</p><button class="btn" id="mulai">Mulai Sesi</button><p class="mono" id="minfo" style="margin-top:10px"></p></div></div></div>
@@ -189,18 +190,31 @@ function rAbsen(my) {
    <div class="card big" style="margin-top:16px"><div class="row between"><b>BARU SAJA TERDETEKSI</b><span class="chip">Real-time</span></div><div id="baru" style="margin-top:10px" class="muted">Belum ada.</div></div>
    <div class="card" style="margin-top:16px"><b>10 Siswa Terakhir Hari Ini</b><div id="log" style="margin-top:10px"></div></div>
   </div></div></div>`;
-  $('#ak').onchange = () => { hentiAbsen(); rAbsen(my); };
+  $('#ak').onchange = () => { S.absenKelas = $('#ak').value; hentiAbsen(); rAbsen(my); };
   $('#mulai').onclick = mulaiAbsen;
   $('#fs').onclick = () => { const e = $('#vp'); if (e.requestFullscreen) e.requestFullscreen(); };
   $('#jeda').onclick = () => { A.jeda = !A.jeda; $('#jeda').innerHTML = A.jeda ? '<span class="ms">play_arrow</span> Lanjutkan' : '<span class="ms">pause</span> Jeda Sesi'; setSt(A.jeda ? 'Sesi dijeda' : 'Menunggu siswa di depan kamera…', ''); };
   $('#man').onclick = manual;
+  $('#hintsesi').textContent = $('#ak').value
+    ? 'Guru masuk tercatat saat sesi dimulai. Siswa kelas ini yang tidak absen dicatat Alpa setelah sesi diakhiri.'
+    : 'Mode semua kelas (pos gerbang) tidak mencatat guru masuk. Pilih kelas agar alpa dihitung dari sesi guru.';
+  $('#akhiri').onclick = async () => {
+    const kl = $('#ak').value; if (!kl) return;
+    if (!await tanya(`Akhiri sesi kelas ${kl}? Siswa yang belum absen akan dicatat Alpa.`)) return;
+    $('#akhiri').disabled = true;
+    const r = await api('sesi.tutup', { kelas: kl });
+    toast(r.message, r.success ? 'ok' : 'error');
+    hentiAbsen(); rAbsen(my);
+  };
   A.clk = setInterval(() => { const j = $('#jam'); if (j) j.textContent = new Date().toLocaleTimeString('id-ID', { hour12: false }); }, 1000);
 }
 async function mulaiAbsen() {
   const b = $('#mulai'); b.disabled = true;
   try {
     $('#minfo').textContent = 'Mengambil data siswa…';
-    const r = await api('absen.boot', { kelas: $('#ak').value });
+    const kl = $('#ak').value;
+    if (kl) { const sr = await api('sesi.buka', { kelas: kl }); if (!sr.success) toast('Guru masuk belum tercatat: ' + sr.message, 'warn'); }
+    const r = await api('absen.boot', { kelas: kl });
     if (!r.success) throw new Error(r.message);
     A.siswa = r.data.siswa; A.ambang = r.data.ambang || 0.5; A.sudah = {}; r.data.sudah.forEach(a => { A.sudah[a.nis] = a; });
     A.log = r.data.sudah.slice().sort((x, y) => x.jam < y.jam ? 1 : -1);
@@ -209,7 +223,7 @@ async function mulaiAbsen() {
     await Wajah.kamera($('#cam'));
     const m = r.data.jamMasuk.split(':'), tt = Number(m[0]) * 60 + Number(m[1]) + r.data.toleransi;
     $('#sesi').textContent = `Sesi Aktif | Masuk ${r.data.jamMasuk}, toleransi ${String(Math.floor(tt / 60) % 24).padStart(2, '0')}:${String(tt % 60).padStart(2, '0')}`;
-    $('#cover').classList.add('hide'); $('#man').classList.remove('hide'); $('#jeda').disabled = false;
+    $('#cover').classList.add('hide'); $('#man').classList.remove('hide'); $('#jeda').disabled = false; $('#akhiri').disabled = !kl;
     A.jalan = true; A.jeda = false; A.trk = { target: null, cur: null }; A.lbl = LBL_CARI; setSt('Menunggu siswa di depan kamera…', ''); updProg(); renderKanan(); trkLoop(); loopAbsen();
     if (!A.siswa.some(s => s.desc)) toast('Belum ada siswa yang terdaftar wajahnya di pilihan ini. Gunakan absen manual.', 'warn');
   } catch (e) {
@@ -425,7 +439,7 @@ function gambarRekap(mode) {
   const chips = ['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpa'].map(x => `<button type="button" class="chip" data-st="${x}" style="border:0;cursor:pointer;font:inherit" aria-label="Tampilkan hanya ${x}">${x} <b>${ps[x] || 0}</b></button>`).join(' ');
   const note = `<div class="row" style="gap:8px;margin-bottom:10px">${chips}</div>`
     + (d.alpaDilewati ? '<p class="muted" style="font-size:12px">Rentang lebih dari 92 hari: alpa tidak dihitung. Persempit rentang tanggal untuk melihat alpa.</p>'
-      : '<p class="muted" style="font-size:12px">Alpa = siswa aktif tanpa catatan absen pada hari sekolah (hari yang punya catatan absensi). Hari ini ditampilkan sebagai “Belum Hadir”. Klik salah satu status di atas untuk menyaring.</p>')
+      : '<p class="muted" style="font-size:12px">Alpa = siswa yang tidak absen pada hari kelasnya berlangsung (guru memulai sesi, atau minimal satu siswa kelas itu absen). Kelas yang tidak berlangsung tidak dihitung alpa. Hari ini tampil “Belum Hadir” sampai guru mengakhiri sesi. Klik salah satu status di atas untuk menyaring.</p>')
     + (d.terpotong ? '<p class="muted">Menampilkan 5.000 data terbaru. Persempit rentang tanggal untuk data lengkap.</p>' : '');
   el.onclick = e => { const b = e.target.closest('[data-st]'); if (!b) return; $('#rt').value = b.dataset.st; const t = document.querySelector('.seg [data-m=tabel]'); if (t) t.click(); $('#rg').click(); };
   if (mode === 'tabel') {
@@ -475,6 +489,7 @@ async function rPengaturan(my) {
   <div class="card" style="margin-top:20px"><h3>Daftar Admin / Guru</h3><p class="muted">Hanya akun Google berikut yang dapat masuk ke portal ini.</p><div id="al" style="margin:12px 0"></div>
    <div class="row"><input id="ae" type="email" placeholder="email@sekolah.sch.id" style="max-width:280px"><input id="an" placeholder="Nama (opsional)" style="max-width:200px"><button class="btn" id="at">Tambah</button></div></div>
   <div class="card" style="margin-top:20px"><h3>Link Pendaftaran Wajah per Kelas</h3><p class="muted">Bagikan link kelas kepada siswa. Siswa cukup mengisi NIS-nya. Jika token bocor, buat ulang.</p><div id="kl" class="tw" style="margin-top:12px"></div></div>
+  <div class="card" style="margin-top:20px"><h3>Jam Masuk per Kelas</h3><p class="muted">Atur jam masuk tiap kelas. <b>Kosongkan</b> untuk memakai jam saat guru memulai sesi absen kelas itu (bila sesi belum dibuka: jam masuk sekolah di atas). Siswa yang tidak absen dicatat <b>Alpa</b> hanya pada hari kelasnya berlangsung.</p><div id="kjm" class="tw" style="margin-top:12px"></div></div>
   <div class="card" style="margin-top:20px"><h3>Absen Mandiri (HP Siswa)</h3><p class="muted">Siswa absen sendiri lewat ponsel masing-masing tanpa login: kamera langsung terbuka dan wajah dicocokkan di server. Aktifkan hanya pada jam absen.</p>
    <label class="chk" style="margin:12px 0"><input type="checkbox" id="mnd-on" ${cfg.absen_mandiri === '1' ? 'checked' : ''}><span><b>Aktifkan absen mandiri</b></span></label>
    <div class="grid g2" style="max-width:420px"><div class="f"><label>Dibuka pukul</label><input type="time" id="mnd-b" value="${esc(cfg.mandiri_buka)}"></div><div class="f"><label>Ditutup pukul</label><input type="time" id="mnd-t" value="${esc(cfg.mandiri_tutup)}"></div></div>
@@ -494,6 +509,16 @@ async function rPengaturan(my) {
   $('#csv').onclick = async () => { const r = await api('pengaturan.simpan', { nama_sekolah: $('#cn').value, jam_masuk: $('#cj').value, toleransi_menit: $('#ct').value, ambang_wajah: $('#ca').value }); toast(r.message, r.success ? 'ok' : 'error'); };
   const gKelas = () => { $('#kl').innerHTML = S.kelas.length ? `<table><thead><tr><th>Kelas</th><th>Terdaftar</th><th>Token</th><th>Link</th><th></th></tr></thead><tbody>${S.kelas.map(k => `<tr><td><span class="chip">${esc(k.kelas)}</span></td><td>${k.terdaftar}/${k.aktif}</td><td class="mono">${esc(k.token)}</td><td><button class="btn ghost" data-c="${esc(k.token)}"><span class="ms">content_copy</span> Salin link</button></td><td><button class="btn out sm" data-r="${esc(k.kelas)}">Buat ulang</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Belum ada kelas. Tambahkan siswa terlebih dulu.</div>'; labelTabel($('#kl')); };
   gKelas();
+  const gJam = () => {
+    $('#kjm').innerHTML = S.kelas.length ? `<table><thead><tr><th>Kelas</th><th>Jam masuk</th><th>Toleransi (menit)</th><th></th></tr></thead><tbody>${S.kelas.map(k => `<tr><td><span class="chip">${esc(k.kelas)}</span></td><td><input type="time" class="kj" value="${esc(k.jam_masuk || '')}" style="max-width:150px" aria-label="Jam masuk ${esc(k.kelas)}"></td><td><input type="number" min="0" max="180" class="kt" value="${esc(k.toleransi_menit || '')}" placeholder="ikut sekolah" style="max-width:150px" aria-label="Toleransi ${esc(k.kelas)}"></td><td><button class="btn sm" data-ks="${esc(k.kelas)}">Simpan</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted">Belum ada kelas. Tambahkan siswa terlebih dulu.</div>';
+    labelTabel($('#kjm'));
+  };
+  gJam();
+  $('#kjm').onclick = async e => {
+    const b = e.target.closest('[data-ks]'); if (!b) return; const tr = b.closest('tr');
+    const r = await api('kelas.pengaturan', { kelas: b.dataset.ks, jam_masuk: tr.querySelector('.kj').value, toleransi_menit: tr.querySelector('.kt').value });
+    toast(r.message, r.success ? 'ok' : 'error'); if (r.success) { await muatKelas(); gJam(); gKelas(); }
+  };
   $('#kl').onclick = async e => {
     const c = e.target.closest('[data-c]'), r = e.target.closest('[data-r]');
     if (c) { const url = base + '?token=' + c.dataset.c; try { await navigator.clipboard.writeText(url); toast('Link disalin.'); } catch (x) { prompt('Salin link ini:', url); } }
